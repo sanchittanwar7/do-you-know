@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Posted — do.you.know.7</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=EB+Garamond:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <section class="section">
+    <div class="container">
+      <div class="gradient-orb-card" style="max-width:640px;margin:0 auto;">
+        <div class="orb orb-mint orb-a"></div>
+        <div class="compose-inner">
+          <span class="badge-pill">Posted</span>
+          <h1 class="display-lg">It's live.</h1>
+          <p class="body-md text-muted">Media ID {{ media_id }}</p>
+          {% if permalink %}
+            <a class="btn btn-primary" href="{{ permalink }}" target="_blank" rel="noopener">View on Instagram ↗</a>
+          {% else %}
+            <p class="body-md">Still processing — check Instagram in a minute.</p>
+          {% endif %}
+          <a class="btn btn-outline" href="/">← New question</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>

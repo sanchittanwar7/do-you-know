@@ -1,0 +1,7 @@
+.env
+.env.example
+token.json
+posts.json
+out/
+.venv/
+__pycache__/
