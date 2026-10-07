@@ -137,6 +137,11 @@ Page linked and follow the steps above unless the application code is migrated a
 
 ## 5. Run
 
+The app is split into a Flask API backend (`backend/`) and a React frontend
+(`frontend/`, built with Vite).
+
+### One-time setup
+
 ```bash
 cd do-you-know
 python3 -m venv .venv
@@ -144,11 +149,39 @@ source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 # fill in .env
-python app.py
+
+cd frontend
+npm install
+npm run build   # builds frontend/dist, which Flask serves
+cd ..
 ```
 
-Open http://localhost:5001 → "Login with Instagram" → approve → type a question → Generate →
-Preview → Post.
+### Production-style (single origin, recommended)
+
+```bash
+python run.py
+```
+
+Open http://localhost:5001 → "Connect Instagram" → approve → type a question → Generate →
+Preview → Post. Flask serves the built React app and the API on the same port.
+
+### Development (React hot reload)
+
+Run the backend and the Vite dev server side by side:
+
+```bash
+# terminal 1
+python run.py
+
+# terminal 2
+cd frontend
+npm run dev
+```
+
+Open http://localhost:5173. Vite proxies `/api`, `/img`, `/login` and `/callback`
+to Flask on :5001. The OAuth redirect URI stays `http://localhost:5001/callback`,
+so after logging in you land on :5001 (which serves the built app). Rebuild with
+`npm run build` if you want :5001 to always show the latest frontend.
 
 ### Note on redirect URI
 The OAuth redirect is `http://localhost:5001/callback`. If you change the port, update
@@ -159,9 +192,34 @@ The OAuth redirect is `http://localhost:5001/callback`. If you change the port, 
 ## Files
 
 ```
-app.py                 # everything
-templates/             # 3 tiny HTML pages
+backend/
+  config.py            # env config + constants
+  storage.py           # token.json / posts.json persistence
+  deepseek.py          # answer generation + caption/comment builders
+  imaging.py           # Pillow slide rendering
+  supabase_store.py    # S3 upload to Supabase
+  instagram.py         # Instagram Graph API calls
+  insights.py          # post insights fetch/format
+  app.py               # Flask app + JSON API
+frontend/
+  src/                 # React SPA (Home, Preview, components)
+  src/styles.css       # design system (verbatim port)
+  dist/                # production build (gitignored)
+run.py                 # entrypoint
+fonts/                 # Anton-Regular.ttf used by the renderer
 token.json             # saved IG token (auto-created, do not commit)
 out/<draft>/0..2.jpg   # rendered slides (auto-created)
-.env                  # secrets (do not commit)
+.env                   # secrets (do not commit)
 ```
+
+### API
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/me` | OAuth/login state |
+| GET | `/api/posts?refresh=1` | post library + view-model fields |
+| POST | `/api/generate` | `{question}` → new draft |
+| GET | `/api/posts/<id>` | draft detail (preview page) |
+| POST | `/api/posts/<id>/publish` | publish carousel in background |
+| GET | `/img/<id>/<n>` | rendered slide image |
+| GET | `/login`, `/callback` | Instagram OAuth (server redirect) |
