@@ -33,6 +33,8 @@ def create_app():
         now = int(time.time())
         page_token = token.get("page_access_token")
         for p in posts:
+            if p.get("status") == "deleted":
+                continue
             p["media_link"] = (
                 supabase_store.supabase_folder_url(p["id"]) if p.get("image_urls") else None
             )
@@ -65,10 +67,17 @@ def create_app():
                         p["insights"] = cached
                         p["insights_at"] = now
                         storage.persist_post(p)
+                    except insights.MediaNotFoundError:
+                        # Post was deleted on Instagram; hide it from the table.
+                        p["status"] = "deleted"
+                        p["error"] = None
+                        p["updated_at"] = now
+                        storage.persist_post(p)
+                        continue
                     except Exception as exc:
                         p["insights_error"] = str(exc)
                 p["stats"] = insights.format_insights(cached or {})
-        return posts
+        return [p for p in posts if p.get("status") != "deleted"]
 
     # ------------------------------------------------------------------ #
     # Auth (OAuth is a full-page redirect flow, kept server-side)

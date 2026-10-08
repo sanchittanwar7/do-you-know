@@ -18,6 +18,43 @@ SYSTEM_PROMPT = (
 )
 
 
+QUESTION_PROMPT = (
+    "You write Instagram trivia questions for the page 'do.you.know.7'. "
+    "Return ONE surprising, curiosity-driving 'Do you know ...' question. "
+    "Make it specific, factual, and answerable with one short answer and one "
+    "long answer. No emoji, no preamble, no hashtags, no quotes around the text. "
+    'Return ONLY valid JSON: {"question": "Do you know ..."}'
+)
+
+
+def generate_question():
+    resp = requests.post(
+        DEEPSEEK_URL,
+        headers={"Authorization": f"Bearer {DEEPSEEK_KEY}"},
+        json={
+            "model": DEEPSEEK_MODEL,
+            "messages": [
+                {"role": "system", "content": QUESTION_PROMPT},
+                {"role": "user", "content": "Give me a new trivia question."},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.9,
+        },
+        timeout=60,
+    )
+    resp.raise_for_status()
+    content = resp.json()["choices"][0]["message"]["content"].strip()
+    if content.startswith("```"):
+        content = content.split("```")[1]
+        if content.startswith("json"):
+            content = content[4:]
+    data = json.loads(content)
+    question = (data.get("question") or "").strip()
+    if not question:
+        raise RuntimeError("Empty question returned by model.")
+    return question
+
+
 def generate_answers(question: str):
     resp = requests.post(
         DEEPSEEK_URL,

@@ -189,6 +189,82 @@ The OAuth redirect is `http://localhost:5001/callback`. If you change the port, 
 
 ---
 
+## 6. Telegram approval + daily scheduler
+
+The app can now run a daily job and ask for your approval over Telegram before
+publishing. `run.py` starts three things at once:
+
+- the Flask API + web UI
+- a background scheduler that fires once a day at the configured time
+- a Telegram long-polling bot for review
+
+### 6.1 Configure Telegram
+
+1. Message [@BotFather](https://t.me/BotFather) → `/newbot` → copy the token.
+2. Message your new bot once, then get your chat id (e.g. via
+   `https://api.telegram.org/bot<TOKEN>/getUpdates`, or ask @userinfobot).
+3. Add to `.env`:
+
+```
+TELEGRAM_BOT_TOKEN=123456:ABC...
+TELEGRAM_CHAT_ID=123456789
+```
+
+Only this chat id can run commands and approve/reject drafts.
+
+### 6.2 Daily job (8:00 AM IST by default)
+
+`SCHEDULE_ENABLED=true`, `SCHEDULE_HOUR=8`, `SCHEDULE_MINUTE=0`,
+`SCHEDULE_TZ=Asia/Kolkata`. At that time the app generates a question, then sends
+you the question + short answer + long answer with **✅ Approve & Post** and
+**❌ Reject** buttons. Approving renders the images, uploads to Supabase, and
+publishes the carousel to Instagram.
+
+### 6.3 Manual triggers
+
+CLI (needs `python run.py` already running to handle the approve callback):
+
+```bash
+source .venv/bin/activate
+python cli.py daily                       # same as the scheduled job
+python cli.py ask "Do you know ...?"      # your own question
+```
+
+Or from Telegram (the configured chat only):
+
+```
+/daily
+/ask Do you know ...?
+```
+
+### 6.4 Run on Oracle bare metal
+
+Run the same single process in the background with systemd (or `nohup`):
+
+```
+nohup python run.py > app.log 2>&1 &
+```
+
+Keep the process alive with a systemd unit (recommended):
+
+```ini
+[Unit]
+Description=do.you.know.7
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/do-you-know
+ExecStart=/opt/do-you-know/.venv/bin/python run.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Set `REDIRECT_URI` and the Meta Valid OAuth Redirect URI to the server's public
+URL (e.g. `https://your-host/callback`) so Instagram login still works when you
+re-authorize.
+
 ## Files
 
 ```
@@ -201,13 +277,18 @@ backend/
   instagram.py         # Instagram Graph API calls
   insights.py          # post insights fetch/format
   app.py               # Flask app + JSON API
+  jobs.py              # approval workflow (generate → review → publish)
+  scheduler.py         # daily job loop
+  telegram_bot.py      # Telegram long-polling review bot
 frontend/
   src/                 # React SPA (Home, Preview, components)
   src/styles.css       # design system (verbatim port)
   dist/                # production build (gitignored)
-run.py                 # entrypoint
+run.py                 # entrypoint (Flask + scheduler + Telegram bot)
+cli.py                 # manual triggers: daily / ask
 fonts/                 # Anton-Regular.ttf used by the renderer
 token.json             # saved IG token (auto-created, do not commit)
+approvals.json         # pending/approved/rejected approval records
 out/<draft>/0..2.jpg   # rendered slides (auto-created)
 .env                   # secrets (do not commit)
 ```

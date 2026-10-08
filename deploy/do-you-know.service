@@ -1,0 +1,12 @@
+[Unit]
+Description=do.you.know.7
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/do-you-know
+ExecStart=/opt/do-you-know/.venv/bin/python run.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

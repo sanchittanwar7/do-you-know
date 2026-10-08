@@ -6,6 +6,21 @@ from .config import GRAPH
 INSIGHT_METRICS = "likes,comments,shares,saved,reach,views,total_interactions"
 
 
+class MediaNotFoundError(RuntimeError):
+    """Raised when Instagram reports the media no longer exists."""
+
+
+def _is_not_found(error):
+    subcode = error.get("error_subcode")
+    if subcode in (33, 803):
+        return True
+    message = str(error.get("message", "")).lower()
+    return any(
+        phrase in message
+        for phrase in ("deleted", "does not exist", "not found", "no longer available")
+    )
+
+
 def fetch_post_insights(media_id, page_access_token):
     r = requests.get(
         f"{GRAPH}/{media_id}/insights",
@@ -14,7 +29,10 @@ def fetch_post_insights(media_id, page_access_token):
     )
     data = r.json()
     if "error" in data:
-        raise RuntimeError(data["error"].get("message", str(data["error"])))
+        error = data["error"]
+        if _is_not_found(error):
+            raise MediaNotFoundError(error.get("message", str(error)))
+        raise RuntimeError(error.get("message", str(error)))
     out = {}
     for m in data.get("data", []):
         vals = m.get("values") or []

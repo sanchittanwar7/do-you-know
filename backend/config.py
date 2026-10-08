@@ -42,12 +42,23 @@ SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "")
 SUPABASE_PUBLIC_BASE = os.getenv("SUPABASE_PUBLIC_BASE", "").rstrip("/")
 IMG_KEY_PREFIX = "do-you-know"
 
+# --- Telegram ---
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+
+# --- Scheduler (daily job) ---
+SCHEDULE_ENABLED = os.getenv("SCHEDULE_ENABLED", "true").lower() == "true"
+SCHEDULE_HOUR = int(os.getenv("SCHEDULE_HOUR", "8"))
+SCHEDULE_MINUTE = int(os.getenv("SCHEDULE_MINUTE", "0"))
+SCHEDULE_TZ = os.getenv("SCHEDULE_TZ", "Asia/Kolkata")
+
 # --- Flask ---
 FLASK_SECRET = os.getenv("FLASK_SECRET", secrets.token_hex(16))
 
 # --- Local persistence ---
 TOKEN_FILE = BASE_DIR / "token.json"
 POSTS_FILE = BASE_DIR / "posts.json"
+APPROVALS_FILE = BASE_DIR / "approvals.json"
 OUT_DIR = BASE_DIR / "out"
 OUT_DIR.mkdir(exist_ok=True)
 

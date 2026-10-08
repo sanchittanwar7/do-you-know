@@ -1,0 +1,52 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify backend imports
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+          .venv/bin/python -c "import backend.app"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify frontend build
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/do-you-know
+            git checkout -- .
+            git pull origin main
+            if [ ! -d .venv ]; then python3 -m venv .venv; fi
+            .venv/bin/pip install -r requirements.txt
+            cd frontend
+            npm install
+            npm run build
+            cd ..
+            sudo systemctl restart do-you-know
