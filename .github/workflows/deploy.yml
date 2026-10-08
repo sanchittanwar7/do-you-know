@@ -40,7 +40,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             set -e
-            cd /opt/do-you-know
+            cd /home/ubuntu/do-you-know
             git checkout -- .
             git pull origin main
             if [ ! -d .venv ]; then python3 -m venv .venv; fi
