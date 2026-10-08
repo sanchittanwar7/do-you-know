@@ -7,11 +7,11 @@ import threading
 
 from backend import scheduler, telegram_bot
 from backend.app import app, repair_missing_permalinks
-from backend.config import PORT
+from backend.config import HOST, PORT
 
 if __name__ == "__main__":
     threading.Thread(target=repair_missing_permalinks, daemon=True).start()
     scheduler.start()
     telegram_bot.start_polling()
     # debug=False avoids the Werkzeug reloader duplicating the background threads.
-    app.run(debug=False, port=PORT)
+    app.run(host=HOST, debug=False, port=PORT)

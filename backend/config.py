@@ -15,6 +15,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 META_APP_ID = os.getenv("META_APP_ID", "")
 META_APP_SECRET = os.getenv("META_APP_SECRET", "")
 REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:5001/callback")
+HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "5001"))
 GRAPH_VERSION = os.getenv("META_GRAPH_VERSION", "v26.0")
 GRAPH = f"https://graph.facebook.com/{GRAPH_VERSION}"
