@@ -340,20 +340,25 @@ def create_app():
     # ------------------------------------------------------------------ #
     @app.route("/")
     def spa_index():
-        return _serve_spa(app)
+        return _serve_spa("index.html")
 
     @app.route("/<path:path>")
     def spa_fallback(path):
         # API/image/auth routes are registered above and take precedence.
         if path.startswith(("api/", "img/")):
             return "Not found", 404
-        return _serve_spa(app)
+        return _serve_spa(path)
 
     return app
 
 
-def _serve_spa(app):
+def _serve_spa(path="index.html"):
     dist = config.FRONTEND_DIST
+    # Serve real build artifacts (JS/CSS/favicon/etc.) with correct MIME types.
+    candidate = (dist / path).resolve()
+    if candidate.is_relative_to(dist) and candidate.is_file():
+        return send_from_directory(dist, path)
+    # SPA fallback: unknown paths render the React app for client-side routing.
     index = dist / "index.html"
     if index.is_file():
         return send_from_directory(dist, "index.html")
