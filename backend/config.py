@@ -65,6 +65,11 @@ OUT_DIR.mkdir(exist_ok=True)
 
 # --- Image rendering ---
 IMG_W, IMG_H = 1080, 1350
+# Horizontal safe margin (px) on each side of a slide. A 9:16 reel letterboxes
+# this 4:5 slide, but Instagram's full-screen player on tall phones (19.5:9 to
+# 21:9) zooms to fill the height and crops ~9-16% off each side (~97-170px).
+# Keeping text and the handle inside this margin stops them being cut off.
+IMG_SIDE_MARGIN = 150
 BG = (253, 250, 239)  # warm cream
 FG = (5, 5, 5)        # near-black
 HEADER = "Do you know?"

@@ -11,6 +11,7 @@ from .config import (
     HEADER_LONG,
     HEADER_SHORT,
     IMG_H,
+    IMG_SIDE_MARGIN,
     IMG_W,
     OUT_DIR,
 )
@@ -65,8 +66,8 @@ def render_slide(text, path, header):
     # header (question / short answer / long answer)
     draw.text((IMG_W // 2, 90), header, font=load_font(64), fill=FG, anchor="ma")
 
-    # main text, auto-fit and centered
-    box_w = IMG_W - 160
+    # main text, auto-fit and centered (kept within the reel safe margin)
+    box_w = IMG_W - 2 * IMG_SIDE_MARGIN
     box_top = 210
     box_bottom = IMG_H - 190
     box_h = box_bottom - box_top
@@ -86,7 +87,13 @@ def render_slide(text, path, header):
         y += size * 1.2
 
     # bottom-right handle
-    draw.text((IMG_W - 60, IMG_H - 60), HANDLE, font=load_font(40), fill=FG, anchor="rs")
+    draw.text(
+        (IMG_W - IMG_SIDE_MARGIN, IMG_H - 60),
+        HANDLE,
+        font=load_font(40),
+        fill=FG,
+        anchor="rs",
+    )
 
     img.save(path, "JPEG", quality=92)
     return path
