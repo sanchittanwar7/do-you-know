@@ -3,7 +3,17 @@ import os
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .config import BG, FG, HANDLE, HEADER, IMG_H, IMG_W, OUT_DIR
+from .config import (
+    BG,
+    FG,
+    HANDLE,
+    HEADER,
+    HEADER_LONG,
+    HEADER_SHORT,
+    IMG_H,
+    IMG_W,
+    OUT_DIR,
+)
 
 FONT_DIR = OUT_DIR.parent / "fonts"
 FONT_CANDIDATES = [
@@ -47,18 +57,17 @@ def capitalize_first(text: str) -> str:
     return text[0].upper() + text[1:]
 
 
-def render_slide(text, path, with_header=True):
+def render_slide(text, path, header):
     img = Image.new("RGB", (IMG_W, IMG_H), BG)
     draw = ImageDraw.Draw(img)
     text = capitalize_first(text.strip())
 
-    # header (question slide only)
-    if with_header:
-        draw.text((IMG_W // 2, 90), HEADER, font=load_font(64), fill=FG, anchor="ma")
+    # header (question / short answer / long answer)
+    draw.text((IMG_W // 2, 90), header, font=load_font(64), fill=FG, anchor="ma")
 
     # main text, auto-fit and centered
     box_w = IMG_W - 160
-    box_top = 210 if with_header else 140
+    box_top = 210
     box_bottom = IMG_H - 190
     box_h = box_bottom - box_top
     size = 150
@@ -87,7 +96,7 @@ def render_images(question, short_answer, long_answer, draft_id):
     """Render slides to out/<draft_id>/ and return repo-relative paths."""
     d = OUT_DIR / draft_id
     d.mkdir(parents=True, exist_ok=True)
-    render_slide(question, str(d / "0.jpg"), with_header=True)
-    render_slide(short_answer, str(d / "1.jpg"), with_header=False)
-    render_slide(long_answer, str(d / "2.jpg"), with_header=False)
+    render_slide(question, str(d / "0.jpg"), header=HEADER)
+    render_slide(short_answer, str(d / "1.jpg"), header=HEADER_SHORT)
+    render_slide(long_answer, str(d / "2.jpg"), header=HEADER_LONG)
     return [f"out/{draft_id}/0.jpg", f"out/{draft_id}/1.jpg", f"out/{draft_id}/2.jpg"]

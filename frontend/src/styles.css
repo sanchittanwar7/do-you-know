@@ -313,6 +313,23 @@ img { max-width: 100%; display: block; }
   padding: 7px 14px;
   font-size: 13px;
 }
+.btn-icon {
+  height: 32px;
+  width: 32px;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+}
+.btn-icon:hover { color: var(--error); border-color: var(--hairline-strong); }
+.btn-icon svg { width: 15px; height: 15px; }
+.cell-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
 .btn-block { width: 100%; }
 
 /* --------------------------------------------------------------------------
@@ -586,6 +603,12 @@ img { max-width: 100%; display: block; }
 .data-table tbody tr { transition: background-color 0.15s ease; }
 .data-table tbody tr:hover { background: var(--canvas-soft); }
 .data-table .q { color: var(--ink); font-weight: 500; }
+.data-table .q-link {
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: none;
+}
+.data-table .q-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .data-table .long { color: var(--muted); }
 .data-table .stats { font-size: 13px; white-space: nowrap; color: var(--muted); }
 .data-table .stat {
@@ -654,6 +677,23 @@ img { max-width: 100%; display: block; }
   padding: 12px 16px;
   border-top: 1px solid var(--hairline);
   color: var(--muted);
+}
+.reel-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0 16px;
+}
+.reel-video {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  background: #000;
+  border-radius: var(--r-xl);
+  margin-top: 16px;
 }
 .preview-answers {
   display: flex;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { fetchDraft, generatePost, publishDraft } from '../api.js'
+import { fetchDraft, generatePost, publishDraft, previewReel } from '../api.js'
 
 export default function Preview() {
   const { draftId } = useParams()
@@ -8,6 +8,9 @@ export default function Preview() {
   const [draft, setDraft] = useState(null)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [reelUrl, setReelUrl] = useState(null)
+  const [reelBusy, setReelBusy] = useState(false)
+  const [reelError, setReelError] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -19,14 +22,28 @@ export default function Preview() {
     }
   }, [draftId])
 
-  async function handlePublish() {
+  async function handlePublish(mediaType = 'carousel') {
     if (busy) return
     setBusy(true)
     try {
-      await publishDraft(draftId)
+      await publishDraft(draftId, mediaType)
       navigate('/')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handlePreviewReel() {
+    if (reelBusy) return
+    setReelBusy(true)
+    setReelError(null)
+    try {
+      const { video_url } = await previewReel(draftId)
+      setReelUrl(`${video_url}?t=${Date.now()}`)
+    } catch (e) {
+      setReelError(e.message)
+    } finally {
+      setReelBusy(false)
     }
   }
 
@@ -85,6 +102,34 @@ export default function Preview() {
           </figure>
         </div>
 
+        <div className="answer">
+          <span className="caption-uppercase text-muted-soft">Reel preview</span>
+          <div className="reel-preview-box">
+            <button
+              className="btn btn-outline"
+              type="button"
+              onClick={handlePreviewReel}
+              disabled={reelBusy}
+            >
+              {reelBusy ? 'Rendering…' : reelUrl ? 'Re-render reel' : 'Preview reel'}
+            </button>
+            <span className="body-sm text-muted-soft">
+              Question · Short answer · Long answer
+            </span>
+          </div>
+          {reelError && <div className="post-error">{reelError}</div>}
+          {reelUrl && (
+            <video
+              className="reel-video"
+              src={reelUrl}
+              controls
+              autoPlay
+              loop
+              playsInline
+            />
+          )}
+        </div>
+
         <div className="preview-answers">
           <div className="answer">
             <span className="caption-uppercase text-muted-soft">Short answer</span>
@@ -114,10 +159,18 @@ export default function Preview() {
           <button
             className="btn btn-primary"
             type="button"
-            onClick={handlePublish}
+            onClick={() => handlePublish('carousel')}
             disabled={busy}
           >
-            Post to Instagram
+            Post as Carousel
+          </button>
+          <button
+            className="btn btn-outline"
+            type="button"
+            onClick={() => handlePublish('reel')}
+            disabled={busy}
+          >
+            Post as Reel
           </button>
           <button
             className="btn btn-outline"

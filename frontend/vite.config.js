@@ -9,6 +9,7 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:5001',
       '/img': 'http://localhost:5001',
+      '/reel': 'http://localhost:5001',
       '/login': 'http://localhost:5001',
       '/callback': 'http://localhost:5001',
     },

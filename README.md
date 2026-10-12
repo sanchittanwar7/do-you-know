@@ -15,6 +15,7 @@ No DB. No Telegram. Token lives in `token.json`.
 ## 1. Prerequisites
 
 - Python 3.10+
+- `ffmpeg` on PATH (only required to render Reels; e.g. `apt install ffmpeg`)
 - Instagram **Business or Creator** account (Personal accounts cannot publish via the official API)
 - A Facebook Page linked to that Instagram account (required by this project's Facebook Login flow)
 - Meta developer account
@@ -216,9 +217,9 @@ Only this chat id can run commands and approve/reject drafts.
 
 `SCHEDULE_ENABLED=true`, `SCHEDULE_HOUR=8`, `SCHEDULE_MINUTE=0`,
 `SCHEDULE_TZ=Asia/Kolkata`. At that time the app generates a question, then sends
-you the question + short answer + long answer with **✅ Approve & Post** and
-**❌ Reject** buttons. Approving renders the images, uploads to Supabase, and
-publishes the carousel to Instagram.
+you the question + short answer + long answer with **Post Carousel**, **Post Reel**,
+and **❌ Reject** buttons. Posting renders the media, uploads to Supabase, and
+publishes the carousel or reel to Instagram.
 
 ### 6.3 Manual triggers
 
@@ -265,6 +266,28 @@ Set `REDIRECT_URI` and the Meta Valid OAuth Redirect URI to the server's public
 URL (e.g. `https://your-host/callback`) so Instagram login still works when you
 re-authorize.
 
+## 7. Reels (video)
+
+Any draft can be published as a Reel instead of a carousel. The three slides are
+stitched into a 9:16 (1080×1920) mp4 with per-slide durations, a draining timer
+bar, and a fade crossfade, then published via `media_type=REELS`.
+
+Requirements:
+
+- `ffmpeg` must be installed and on PATH on the host.
+- Background music is optional. If `REEL_MUSIC_PATH` is set it is used; otherwise
+  a random track is picked from `REEL_AUDIO_DIR` (default `media/reels/audio`).
+  Put your own/royalty-free mp3/m4a/wav files there. If neither exists, the reel
+  is silent. Audio is baked into the file — the IG API cannot attach licensed or
+  trending music.
+- The audio files live under `media/` and are **not** read from env vars: they
+  must exist on the deploy host (commit them or upload them manually).
+
+Reel env vars (all optional, with defaults): `REEL_FPS`, `REEL_CROSSFADE`,
+`REEL_QUESTION_SECONDS`, `REEL_SHORT_SECONDS`, `REEL_LONG_SECONDS`,
+`REEL_TIMER_HEIGHT`, `REEL_TIMER_Y`, `REEL_TIMER_WIDTH_FRACTION`,
+`REEL_MUSIC_PATH`, `REEL_AUDIO_DIR`, `REEL_MUSIC_VOLUME`, `REEL_SHARE_TO_FEED`.
+
 ## Files
 
 ```
@@ -273,6 +296,7 @@ backend/
   storage.py           # token.json / posts.json persistence
   deepseek.py          # answer generation + caption/comment builders
   imaging.py           # Pillow slide rendering
+  video.py             # ffmpeg reel (video) rendering
   supabase_store.py    # S3 upload to Supabase
   instagram.py         # Instagram Graph API calls
   insights.py          # post insights fetch/format
@@ -290,6 +314,8 @@ fonts/                 # Anton-Regular.ttf used by the renderer
 token.json             # saved IG token (auto-created, do not commit)
 approvals.json         # pending/approved/rejected approval records
 out/<draft>/0..2.jpg   # rendered slides (auto-created)
+out/<draft>/reel.mp4   # rendered reel (auto-created)
+media/reels/audio/     # optional background music tracks
 .env                   # secrets (do not commit)
 ```
 
@@ -301,6 +327,9 @@ out/<draft>/0..2.jpg   # rendered slides (auto-created)
 | GET | `/api/posts?refresh=1` | post library + view-model fields |
 | POST | `/api/generate` | `{question}` → new draft |
 | GET | `/api/posts/<id>` | draft detail (preview page) |
-| POST | `/api/posts/<id>/publish` | publish carousel in background |
+| DELETE | `/api/posts/<id>` | soft-delete a draft |
+| POST | `/api/posts/<id>/publish` | `{media_type: carousel\|reel}` → publish in background |
+| POST | `/api/posts/<id>/preview-reel` | build the reel mp4 on demand |
+| GET | `/reel/<id>.mp4` | serve the rendered reel video |
 | GET | `/img/<id>/<n>` | rendered slide image |
 | GET | `/login`, `/callback` | Instagram OAuth (server redirect) |

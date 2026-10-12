@@ -3,7 +3,12 @@ import time
 
 import requests
 
-from .config import GRAPH, META_CONTENT_IS_AI_GENERATED, META_PAGE_ID
+from .config import (
+    GRAPH,
+    META_CONTENT_IS_AI_GENERATED,
+    META_PAGE_ID,
+    REEL_SHARE_TO_FEED,
+)
 
 
 def get_connected_instagram_account(user_access_token):
@@ -64,7 +69,7 @@ def create_image_container(ig_user_id, image_url, page_access_token):
     return data["id"]
 
 
-def wait_for_container(container_id, page_access_token, tries=20):
+def wait_for_container(container_id, page_access_token, tries=20, delay=2):
     """Wait for a media container to finish processing before it is published."""
     for _ in range(tries):
         r = requests.get(
@@ -78,7 +83,7 @@ def wait_for_container(container_id, page_access_token, tries=20):
             return
         if status == "ERROR":
             raise RuntimeError(f"Media container {container_id} failed: {r.json()}")
-        time.sleep(2)
+        time.sleep(delay)
     raise RuntimeError(f"Media container {container_id} did not finish processing in time.")
 
 
@@ -118,6 +123,46 @@ def publish_carousel(ig_user_id, image_urls, caption, page_access_token):
     pub = r.json()
     if "id" not in pub:
         raise RuntimeError(f"Publish failed: {pub}")
+    return pub["id"]
+
+
+def publish_reel(ig_user_id, video_url, caption, page_access_token, share_to_feed=None):
+    """Publish a 9:16 video as an Instagram Reel.
+
+    Audio must already be baked into `video_url`; the Graph API has no music
+    parameter and cannot attach Instagram's licensed/trending audio.
+    """
+    if share_to_feed is None:
+        share_to_feed = REEL_SHARE_TO_FEED
+    params = {
+        "media_type": "REELS",
+        "video_url": video_url,
+        "caption": caption,
+        "access_token": page_access_token,
+        "share_to_feed": "true" if share_to_feed else "false",
+    }
+    if META_CONTENT_IS_AI_GENERATED:
+        params["is_ai_generated"] = "true"
+    r = requests.post(
+        f"{GRAPH}/{ig_user_id}/media",
+        params=params,
+        timeout=60,
+    )
+    data = r.json()
+    if "id" not in data:
+        raise RuntimeError(f"Reel container failed: {data}")
+    reel_id = data["id"]
+    # Video/reel transcoding is much slower than image containers; wait longer.
+    wait_for_container(reel_id, page_access_token, tries=120, delay=3)
+
+    r = requests.post(
+        f"{GRAPH}/{ig_user_id}/media_publish",
+        params={"creation_id": reel_id, "access_token": page_access_token},
+        timeout=60,
+    )
+    pub = r.json()
+    if "id" not in pub:
+        raise RuntimeError(f"Reel publish failed: {pub}")
     return pub["id"]
 
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Bookmark,
   Eye,
@@ -6,6 +7,7 @@ import {
   MessageCircle,
   RefreshCw,
   Share2,
+  Trash2,
   TrendingUp,
 } from 'lucide-react'
 import { formatDate } from '../format.js'
@@ -81,15 +83,26 @@ function StatsCell({ post }) {
   )
 }
 
-export default function PostTable({ posts, onRefresh, onPublish }) {
+export default function PostTable({ posts, onRefresh, onPublish, onDelete }) {
   const [publishingId, setPublishingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
 
-  async function handlePublish(id) {
+  async function handlePublish(id, mediaType) {
     setPublishingId(id)
     try {
-      await onPublish(id)
+      await onPublish(id, mediaType)
     } finally {
       setPublishingId(null)
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm('Delete this draft?')) return
+    setDeletingId(id)
+    try {
+      await onDelete(id)
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -136,11 +149,19 @@ export default function PostTable({ posts, onRefresh, onPublish }) {
           <tbody>
             {posts.map((p) => {
               const canPublish = p.status === 'generated' || p.status === 'failed'
+              const canDelete = p.status === 'generated' || p.status === 'failed'
               const isPublishing = p.status === 'publishing'
+              const isDraft = p.status !== 'published'
               return (
                 <tr key={p.id}>
                   <td className="q">
-                    <div className="clamp">{p.question}</div>
+                    {isDraft ? (
+                      <Link className="clamp q-link" to={`/preview/${p.id}`} title="Open preview">
+                        {p.question}
+                      </Link>
+                    ) : (
+                      <div className="clamp">{p.question}</div>
+                    )}
                   </td>
                   <td>
                     <div className="clamp">{p.short}</div>
@@ -155,16 +176,40 @@ export default function PostTable({ posts, onRefresh, onPublish }) {
                   <LinkCell post={p} />
                   <StatsCell post={p} />
                   <td className="nowrap">
-                    {canPublish && (
-                      <button
-                        className="btn btn-primary btn-sm"
-                        type="button"
-                        onClick={() => handlePublish(p.id)}
-                        disabled={publishingId === p.id || isPublishing}
-                      >
-                        {p.status === 'failed' ? 'Retry' : 'Post'}
-                      </button>
-                    )}
+                    <div className="cell-actions">
+                      {canPublish && (
+                        <>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            type="button"
+                            onClick={() => handlePublish(p.id, 'carousel')}
+                            disabled={publishingId === p.id || isPublishing}
+                          >
+                            {p.status === 'failed' ? 'Retry Carousel' : 'Post Carousel'}
+                          </button>
+                          <button
+                            className="btn btn-outline btn-sm"
+                            type="button"
+                            onClick={() => handlePublish(p.id, 'reel')}
+                            disabled={publishingId === p.id || isPublishing}
+                          >
+                            {p.status === 'failed' ? 'Retry Reel' : 'Post Reel'}
+                          </button>
+                        </>
+                      )}
+                      {canDelete && (
+                        <button
+                          className="btn btn-icon"
+                          type="button"
+                          onClick={() => handleDelete(p.id)}
+                          disabled={deletingId === p.id}
+                          title="Delete draft"
+                          aria-label="Delete draft"
+                        >
+                          <Trash2 />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )

@@ -44,6 +44,17 @@ def upload_to_storage(local_paths, draft_id):
     return urls
 
 
+def upload_video_to_storage(local_path, draft_id):
+    if not (SUPABASE_ENDPOINT and SUPABASE_KEY and SUPABASE_SECRET and SUPABASE_BUCKET):
+        raise RuntimeError("Supabase storage is not configured. Set SUPABASE_* in .env.")
+    client = supabase_client()
+    key = f"{IMG_KEY_PREFIX}/{draft_id}/reel.mp4"
+    client.upload_file(
+        _resolve(local_path), SUPABASE_BUCKET, key, ExtraArgs={"ContentType": "video/mp4"}
+    )
+    return f"{SUPABASE_PUBLIC_BASE}/{key}"
+
+
 def supabase_folder_url(draft_id):
     """Dashboard link to the folder in the public bucket holding a draft's images."""
     if not (SUPABASE_ENDPOINT and SUPABASE_BUCKET):

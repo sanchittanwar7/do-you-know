@@ -23,5 +23,14 @@ export const generatePost = (question) =>
     body: JSON.stringify({ question }),
   })
 
-export const publishDraft = (draftId) =>
-  request(`/api/posts/${draftId}/publish`, { method: 'POST' })
+export const publishDraft = (draftId, mediaType = 'carousel') =>
+  request(`/api/posts/${draftId}/publish`, {
+    method: 'POST',
+    body: JSON.stringify({ media_type: mediaType }),
+  })
+
+export const previewReel = (draftId) =>
+  request(`/api/posts/${draftId}/preview-reel`, { method: 'POST' })
+
+export const deleteDraft = (draftId) =>
+  request(`/api/posts/${draftId}`, { method: 'DELETE' })

@@ -68,7 +68,35 @@ IMG_W, IMG_H = 1080, 1350
 BG = (253, 250, 239)  # warm cream
 FG = (5, 5, 5)        # near-black
 HEADER = "Do you know?"
+HEADER_SHORT = "Short answer"
+HEADER_LONG = "Long answer"
 HANDLE = "@do.you.know.7"
+
+# --- Reel (video) rendering ---
+REEL_W, REEL_H = 1080, 1920  # 9:16
+REEL_FPS = int(os.getenv("REEL_FPS", "25"))
+REEL_CROSSFADE = float(os.getenv("REEL_CROSSFADE", "0.5"))
+# Per-slide durations (seconds): question, short answer, long answer.
+REEL_QUESTION_SECONDS = float(os.getenv("REEL_QUESTION_SECONDS", "3"))
+REEL_SHORT_SECONDS = float(os.getenv("REEL_SHORT_SECONDS", "3"))
+REEL_LONG_SECONDS = float(os.getenv("REEL_LONG_SECONDS", "5"))
+# Draining timer bar rendered below each slide's header (video/reel only).
+# `REEL_TIMER_Y` is the top edge in slide-image coordinates (1080x1350); the
+# video layer offsets it by the letterbox margin. `REEL_TIMER_WIDTH_FRACTION`
+# controls how wide the bar is as a fraction of the slide width.
+REEL_TIMER_HEIGHT = int(os.getenv("REEL_TIMER_HEIGHT", "18"))
+REEL_TIMER_Y = int(os.getenv("REEL_TIMER_Y", "190"))
+REEL_TIMER_WIDTH_FRACTION = float(os.getenv("REEL_TIMER_WIDTH_FRACTION", "0.5"))
+# Path to an audio file (mp3/m4a/wav) to bake into the reel. Must be audio you
+# own or are licensed to use; the IG API cannot attach licensed/trending music.
+# If empty, a random track from REEL_AUDIO_DIR is used instead.
+REEL_MUSIC_PATH = os.getenv("REEL_MUSIC_PATH", "").strip()
+# Directory of background tracks; a random one is picked per reel. Relative to
+# the project root unless an absolute path is given.
+REEL_AUDIO_DIR = BASE_DIR / os.getenv("REEL_AUDIO_DIR", "media/reels/audio")
+# Background music gain. 1.0 = original volume, 0.0 = silent. Default 0.3.
+REEL_MUSIC_VOLUME = float(os.getenv("REEL_MUSIC_VOLUME", "0.3"))
+REEL_SHARE_TO_FEED = os.getenv("REEL_SHARE_TO_FEED", "true").lower() == "true"
 
 # 3 fixed visibility hashtags that ship with every caption.
 FIXED_HASHTAGS = ["#doyouknow", "#facts", "#curious"]

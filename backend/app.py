@@ -15,6 +15,7 @@ from . import insights
 from . import instagram
 from . import storage
 from . import supabase_store
+from . import video
 
 
 def create_app():
@@ -197,11 +198,16 @@ def create_app():
         posts = build_posts_view(force)
         return jsonify({"posts": posts})
 
-    @app.route("/api/posts/<draft_id>", methods=["GET"])
+    @app.route("/api/posts/<draft_id>", methods=["GET", "DELETE"])
     def api_post(draft_id):
         draft = storage.get_post(draft_id)
         if not draft:
             return jsonify({"error": "Draft not found."}), 404
+        if request.method == "DELETE":
+            draft["status"] = "deleted"
+            draft["updated_at"] = int(time.time())
+            storage.upsert_post(draft)
+            return jsonify({"status": "deleted"})
         return jsonify({"draft": draft})
 
     @app.route("/api/generate", methods=["POST"])
@@ -236,6 +242,7 @@ def create_app():
                 "caption": caption,
                 "hashtags": hashtags,
                 "status": "generated",
+                "media_type": "carousel",
                 "image_urls": image_urls,
                 "local_images": paths,
                 "permalink": None,
@@ -247,7 +254,7 @@ def create_app():
         )
         return jsonify({"draft_id": draft_id})
 
-    def publish_in_background(post_id):
+    def publish_in_background(post_id, media_type="carousel"):
         token = storage.load_token()
         record = storage.get_post(post_id)
         if not record:
@@ -260,18 +267,32 @@ def create_app():
             return
 
         try:
-            urls = record.get("image_urls") or supabase_store.upload_to_storage(
-                record["local_images"], post_id
-            )
-            if not record.get("image_urls"):
-                record["image_urls"] = urls
             caption = record.get("caption") or deepseek.build_caption(
                 record.get("question", ""),
                 record.get("hashtags", []),
             )
-            media_id = instagram.publish_carousel(
-                token["ig_user_id"], urls, caption, token["page_access_token"]
-            )
+            if media_type == "reel":
+                video_path = video.build_reel(record["local_images"], post_id)
+                video_url = supabase_store.upload_video_to_storage(video_path, post_id)
+                media_id = instagram.publish_reel(
+                    token["ig_user_id"], video_url, caption, token["page_access_token"]
+                )
+                record.update(
+                    {
+                        "media_type": "reel",
+                        "video_url": video_url,
+                        "local_video": video_path,
+                    }
+                )
+            else:
+                urls = record.get("image_urls") or supabase_store.upload_to_storage(
+                    record["local_images"], post_id
+                )
+                if not record.get("image_urls"):
+                    record["image_urls"] = urls
+                media_id = instagram.publish_carousel(
+                    token["ig_user_id"], urls, caption, token["page_access_token"]
+                )
             comment_id = instagram.post_comment(
                 media_id,
                 deepseek.build_comment(record.get("short", ""), record.get("long", "")),
@@ -312,13 +333,18 @@ def create_app():
         record = storage.get_post(draft_id)
         if not record:
             return jsonify({"error": "Draft not found."}), 404
+        body = request.get_json(silent=True) or {}
+        media_type = body.get("media_type", "carousel")
+        if media_type not in ("carousel", "reel"):
+            return jsonify({"error": "media_type must be 'carousel' or 'reel'."}), 400
         record["status"] = "publishing"
+        record["media_type"] = media_type
         record["updated_at"] = int(time.time())
         storage.upsert_post(record)
         threading.Thread(
-            target=publish_in_background, args=(draft_id,), daemon=True
+            target=publish_in_background, args=(draft_id, media_type), daemon=True
         ).start()
-        return jsonify({"status": "publishing"})
+        return jsonify({"status": "publishing", "media_type": media_type})
 
     # ------------------------------------------------------------------ #
     # Local image serving (preview slides)
@@ -336,6 +362,31 @@ def create_app():
         return send_file(path, mimetype="image/jpeg")
 
     # ------------------------------------------------------------------ #
+    # Reel preview (render on demand, serve the mp4)
+    # ------------------------------------------------------------------ #
+    @app.route("/api/posts/<draft_id>/preview-reel", methods=["POST"])
+    def api_preview_reel(draft_id):
+        record = storage.get_post(draft_id)
+        if not record:
+            return jsonify({"error": "Draft not found."}), 404
+        paths = record.get("local_images") or []
+        if not paths:
+            return jsonify({"error": "No slides to render."}), 400
+        try:
+            video.build_reel(paths, draft_id)
+        except Exception as exc:
+            app.logger.warning("Reel preview build failed: %s", exc)
+            return jsonify({"error": f"Reel preview failed: {exc}"}), 500
+        return jsonify({"video_url": f"/reel/{draft_id}.mp4"})
+
+    @app.route("/reel/<draft_id>.mp4")
+    def reel_video(draft_id):
+        path = config.OUT_DIR / draft_id / "reel.mp4"
+        if not path.is_file():
+            return "Not found", 404
+        return send_file(path, mimetype="video/mp4", conditional=True)
+
+    # ------------------------------------------------------------------ #
     # Frontend (React build) + SPA fallback
     # ------------------------------------------------------------------ #
     @app.route("/")
@@ -345,7 +396,7 @@ def create_app():
     @app.route("/<path:path>")
     def spa_fallback(path):
         # API/image/auth routes are registered above and take precedence.
-        if path.startswith(("api/", "img/")):
+        if path.startswith(("api/", "img/", "reel/")):
             return "Not found", 404
         return _serve_spa(path)
 

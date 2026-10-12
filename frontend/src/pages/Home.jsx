@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchMe, fetchPosts, generatePost, publishDraft } from '../api.js'
+import { fetchMe, fetchPosts, generatePost, publishDraft, deleteDraft } from '../api.js'
 import TopNav from '../components/TopNav.jsx'
 import Composer from '../components/Composer.jsx'
 import PostTable from '../components/PostTable.jsx'
@@ -46,8 +46,13 @@ export default function Home() {
     navigate(`/preview/${draft_id}`)
   }
 
-  async function handlePublish(draftId) {
-    await publishDraft(draftId)
+  async function handlePublish(draftId, mediaType) {
+    await publishDraft(draftId, mediaType)
+    await load()
+  }
+
+  async function handleDelete(draftId) {
+    await deleteDraft(draftId)
     await load()
   }
 
@@ -65,6 +70,7 @@ export default function Home() {
             posts={posts}
             onRefresh={() => load(true)}
             onPublish={handlePublish}
+            onDelete={handleDelete}
           />
         </div>
       </section>

@@ -11,6 +11,7 @@ from . import imaging
 from . import instagram
 from . import storage
 from . import supabase_store
+from . import video
 
 
 def create_approval(question=None, source="manual"):
@@ -59,7 +60,7 @@ def reject_approval(approval_id):
     return approval
 
 
-def approve_and_publish(approval_id):
+def approve_and_publish(approval_id, media_type="carousel"):
     """Render images, upload, publish to IG, and record a published post."""
     approval = storage.get_approval(approval_id)
     if not approval or approval.get("status") != "pending":
@@ -79,13 +80,22 @@ def approve_and_publish(approval_id):
         paths = imaging.render_images(
             approval["question"], approval["short"], approval["long"], approval_id
         )
-        urls = supabase_store.upload_to_storage(paths, approval_id)
         caption = deepseek.build_caption(
             approval["question"], approval.get("hashtags", [])
         )
-        media_id = instagram.publish_carousel(
-            token["ig_user_id"], urls, caption, token["page_access_token"]
-        )
+        if media_type == "reel":
+            video_path = video.build_reel(paths, approval_id)
+            video_url = supabase_store.upload_video_to_storage(video_path, approval_id)
+            media_id = instagram.publish_reel(
+                token["ig_user_id"], video_url, caption, token["page_access_token"]
+            )
+            urls = []
+        else:
+            urls = supabase_store.upload_to_storage(paths, approval_id)
+            video_url = None
+            media_id = instagram.publish_carousel(
+                token["ig_user_id"], urls, caption, token["page_access_token"]
+            )
         comment_id = instagram.post_comment(
             media_id,
             deepseek.build_comment(approval["short"], approval["long"]),
@@ -104,8 +114,11 @@ def approve_and_publish(approval_id):
             "caption": caption,
             "hashtags": approval.get("hashtags", []),
             "status": "published",
+            "media_type": media_type,
             "image_urls": urls,
             "local_images": paths,
+            "video_url": video_url,
+            "local_video": video_path if media_type == "reel" else None,
             "permalink": permalink,
             "media_id": media_id,
             "comment_id": comment_id,

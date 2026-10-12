@@ -39,7 +39,7 @@ def send_message(text):
 
 
 def send_approval(approval):
-    """Send question + short + long answer with Approve/Reject buttons."""
+    """Send question + short + long answer with Post Carousel/Reel/Reject buttons."""
     if not is_configured():
         return None
     text = (
@@ -52,8 +52,12 @@ def send_approval(approval):
         "inline_keyboard": [
             [
                 {
-                    "text": "✅ Approve & Post",
-                    "callback_data": f"approve:{approval['id']}",
+                    "text": "🖼 Post Carousel",
+                    "callback_data": f"post:carousel:{approval['id']}",
+                },
+                {
+                    "text": "🎬 Post Reel",
+                    "callback_data": f"post:reel:{approval['id']}",
                 },
                 {
                     "text": "❌ Reject",
@@ -110,10 +114,10 @@ def _handle_update(update):
         if _normalize_chat_id(chat_id) != _normalize_chat_id(config.TELEGRAM_CHAT_ID):
             return
         data = cq.get("data", "")
-        if data.startswith("approve:"):
-            approval_id = data.split(":", 1)[1]
-            jobs.approve_and_publish(approval_id)
-            _answer_callback(cq["id"], "Approved — creating images and posting.")
+        if data.startswith("post:"):
+            _, media_type, approval_id = data.split(":", 2)
+            jobs.approve_and_publish(approval_id, media_type)
+            _answer_callback(cq["id"], f"Posting as {media_type} — creating media and publishing.")
         elif data.startswith("reject:"):
             approval_id = data.split(":", 1)[1]
             approval = jobs.reject_approval(approval_id)
@@ -153,12 +157,20 @@ def _poll_loop():
                 timeout=60,
             )
             r.raise_for_status()
-            updates = r.json().get("result", [])
+            body = r.json()
+            if not body.get("ok"):
+                time.sleep(5)
+                continue
+            updates = body.get("result") or []
             for update in updates:
-                offset = max(offset, update["update_id"] + 1)
+                offset = max(offset, int(update.get("update_id", 0)) + 1)
                 try:
                     _handle_update(update)
                 except Exception as exc:
-                    send_message(f"⚠️ Update handling failed: {exc}")
-        except requests.RequestException:
+                    try:
+                        send_message(f"⚠️ Update handling failed: {exc}")
+                    except Exception:
+                        pass
+        except Exception:
+            # Never let a transient error kill the polling thread.
             time.sleep(5)
