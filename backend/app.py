@@ -37,7 +37,9 @@ def create_app():
             if p.get("status") == "deleted":
                 continue
             p["media_link"] = (
-                supabase_store.supabase_folder_url(p["id"]) if p.get("image_urls") else None
+                supabase_store.supabase_folder_url(p["id"])
+                if (p.get("image_urls") or p.get("video_url"))
+                else None
             )
             p["stats"] = None
             p["insights_error"] = None
